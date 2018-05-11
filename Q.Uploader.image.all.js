@@ -395,7 +395,14 @@
         getFirst = Q.getFirst,
         getLast = Q.getLast,
 
-        parseJSON = JSON.parse,
+        //parseJSON = JSON.parse,
+        parseJSON = function parseJSON(str) {
+            var p = new Promise(function (resolve, reject) {
+                var cc = JSON.parse(str);
+                resolve(cc);
+            });
+            return p;
+        },
 
         createEle = Q.createEle,
         parseHTML = Q.parseHTML,
@@ -589,6 +596,10 @@
 
         self.index = 0;
         self.started = false;
+
+        self.total = 0;
+        self.filelimit = ops.filelimit || 1;
+        self.view = ops.view;
 
         self.set(ops)._init();
     }
@@ -1028,7 +1039,11 @@
                     responseText = xhr.responseText;
 
                     if (responseText === "ok") json = { ret: 1 };
-                    else if (responseText) json = parseJSON(responseText);
+                    else if (responseText) json = parseJSON(responseText).then(function (b) {
+                        json = b;
+                    }).catch(function (err) {
+
+                    });
 
                     if (!json || typeof json == "number") json = { ret: 0, start: json };
 
@@ -1228,7 +1243,11 @@
             task.response = responseText;
             if (!responseText) return;
 
-            if (this.dataType == "json") task.json = parseJSON(responseText);
+            if (this.dataType == "json") task.json = parseJSON(responseText).then(function (b) {
+                task.json = b;
+            }).catch(function (err) {
+                task.state = UPLOAD_STATE_ERROR;
+            });
         },
 
         //完成上传
@@ -1473,6 +1492,12 @@
 
     Uploader.previewImage = previewImage;
     Uploader.scaleImage = scaleImage;
+    Uploader.prototype.DelItem = function (e) {
+        e.parentElement.remove();
+        var ops = this.ops;
+        this.total--;
+        if (this.total < ops.filelimit) { this.target.style = ""; }
+    };
 
     //图片上传UI
     Uploader.UI.Image = {
